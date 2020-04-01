@@ -27,35 +27,44 @@
 **
 ****************************************************************************/
 
-#ifndef XYSERIESIODEVICE_H
-#define XYSERIESIODEVICE_H
+#include "mainWindow.h"
 
-#include <QtCore/QIODevice>
-#include <QtCore/QPointF>
-#include <QtCore/QVector>
-#include <QtCharts/QChartGlobal>
+#include <QtMultimedia/QAudioDeviceInfo>
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QMessageBox>
+#include <QFile>
+//#include <QSerialPort>
 
-QT_CHARTS_BEGIN_NAMESPACE
-class QXYSeries;
-QT_CHARTS_END_NAMESPACE
+#ifdef Q_OS_MAC
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
-QT_CHARTS_USE_NAMESPACE
+// On MacOSX, App nap prevents timer to be precise when app is in background.
+void disableAppNap(){
+#ifdef Q_OS_OSX
+    CFBundleRef mainBundle = CFBundleGetMainBundle();
+    if( mainBundle ){
+        CFMutableDictionaryRef infoDict = (CFMutableDictionaryRef) CFBundleGetInfoDictionary(mainBundle);
+        if( infoDict ){
+            CFDictionarySetValue(infoDict, CFSTR("LSUIElement"), CFSTR("1"));
+        }
+    }
+#endif
+}
 
-class XYSeriesIODevice : public QIODevice
+int main(int argc, char *argv[])
 {
-    Q_OBJECT
-public:
-    explicit XYSeriesIODevice(QXYSeries *series, QObject *parent = nullptr);
+    disableAppNap();
 
-    static const int sampleCount = 200;
+    QApplication a(argc, argv);
 
-protected:
-    qint64 readData(char *data, qint64 maxSize) override;
-    qint64 writeData(const char *data, qint64 maxSize) override;
+    QFile styleFile( ":/stylesheet/dark_stylesheet.qss" );
+    styleFile.open( QFile::ReadOnly );
+    QString style( styleFile.readAll() );
+    a.setStyleSheet( style );
 
-private:
-    QXYSeries *m_series;
-    QVector<QPointF> m_buffer;
-};
-
-#endif // XYSERIESIODEVICE_H
+    MainWindow w;
+    w.show();
+    
+    return a.exec();
+}

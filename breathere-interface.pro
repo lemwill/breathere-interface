@@ -6,26 +6,26 @@ QT += charts bluetooth multimedia \
 QMAKE_TARGET_BUNDLE_PREFIX = williamlemaire.test
 
 HEADERS += \
-    bluetoothbaseclass.h \
-    configurealarmdialog.h \
-    connectionhandler.h \
-    devicefinder.h \
-    devicehandler.h \
-    deviceinfo.h \
-    heartrate-global.h \
-    widget.h \
-    xyseriesiodevice.h
+    src/bluetooth/bluetoothbaseclass.h \
+    src/bluetooth/connectionhandler.h \
+    src/bluetooth/devicefinder.h \
+    src/bluetooth/devicehandler.h \
+    src/bluetooth/deviceinfo.h \
+    src/bluetooth/heartrate-global.h \
+    src/chartwidget.h \
+    src/configurealarmdialog.h \
+    src/mainWindow.h
 
 SOURCES += \
-    bluetoothbaseclass.cpp \
-    configurealarmdialog.cpp \
-    connectionhandler.cpp \
-    devicefinder.cpp \
-    devicehandler.cpp \
-    deviceinfo.cpp \
-    main.cpp\
-    widget.cpp \
-    xyseriesiodevice.cpp
+    src/bluetooth/bluetoothbaseclass.cpp \
+    src/bluetooth/connectionhandler.cpp \
+    src/bluetooth/devicefinder.cpp \
+    src/bluetooth/devicehandler.cpp \
+    src/bluetooth/deviceinfo.cpp \
+    src/chartwidget.cpp \
+    src/configurealarmdialog.cpp \
+    src/main.cpp \
+    src/mainWindow.cpp
 
 INSTALLS += target
 ios{
@@ -35,6 +35,9 @@ ios{
 APP_Sounds.files = $$PWD/sounds/beep.mp3
 APP_Sounds.files = sounds
 QMAKE_BUNDLE_DATA += APP_Sounds
+
+macx: QMAKE_LFLAGS += -F /System/Library/Frameworks/CoreFoundation.framework/
+macx: LIBS += -framework CoreFoundation
 
 
 DISTFILES += \

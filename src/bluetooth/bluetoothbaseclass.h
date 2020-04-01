@@ -63,9 +63,11 @@ public:
     explicit BluetoothBaseClass(QObject *parent = nullptr);
 
     QString error() const;
+
     void setError(const QString& error);
 
     QString info() const;
+
     void setInfo(const QString& info);
 
     void clearMessages();

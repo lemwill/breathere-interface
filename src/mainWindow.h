@@ -33,9 +33,9 @@
 #include <QtWidgets/QWidget>
 #include <QtCharts/QChartGlobal>
 //#include <QSerialPort>
-#include "connectionhandler.h"
-#include "devicehandler.h"
-#include "devicefinder.h"
+#include "bluetooth/connectionhandler.h"
+#include "bluetooth/devicehandler.h"
+#include "bluetooth/devicefinder.h"
 #include <QLabel>
 
 QT_CHARTS_BEGIN_NAMESPACE
@@ -46,20 +46,19 @@ QT_CHARTS_END_NAMESPACE
 
 QT_CHARTS_USE_NAMESPACE
 
-class XYSeriesIODevice;
+//class XYSeriesIODevice;
 
 QT_BEGIN_NAMESPACE
 class QAudioInput;
 class QAudioDeviceInfo;
 QT_END_NAMESPACE
 
-class Widget : public QWidget
+class MainWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit Widget( QWidget *parent = nullptr);
-    ~Widget();
+    explicit MainWindow( QWidget *parent = nullptr);
 
 public slots:
     void addPoint();
@@ -67,11 +66,20 @@ public slots:
 
 
 private:
-    XYSeriesIODevice *m_device = nullptr;
+   // XYSeriesIODevice *m_device = nullptr;
     QLineSeries *expirationFlowSeries ;
     QLineSeries *pressureFlowSeries ;
     QLineSeries *volumeFlowSeries;
 
+    int i = 0;
+    float volume = 0;
+    float tidalVolume = 0;
+    int underThresholdAccumulation = 0;
+    int tidalThresholdLow = 1;
+    int tidalThresholdHigh = 10;
+    float respiratoryRate = 0;
+    bool inspirationValid = false;
+    QDateTime previousTime = QDateTime::currentDateTime();
 
     QAudioInput *m_audioInput = nullptr;
 
@@ -94,6 +102,8 @@ private:
     QLabel* respiratoryRateLabel;
     QLabel* minuteVolumeLabel;
     QLabel* respiratoryRateMinMax;
+    QLabel* tidalVolumeMinMax;
+    QLabel* peakPressureMinMax;
 
     void openSerialPort();
     void closeSerialPort();
