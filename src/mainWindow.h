@@ -37,6 +37,7 @@
 #include "bluetooth/devicehandler.h"
 #include "bluetooth/devicefinder.h"
 #include <QLabel>
+#include "chart.h"
 
 QT_CHARTS_BEGIN_NAMESPACE
 class QLineSeries;
@@ -110,19 +111,32 @@ private:
     void writeData(const QByteArray &data);
 
     QChartView* createChart(QtCharts::QLineSeries* lineSeries, QString axisTitle, int rangeLow, int rangeHigh);
+
     void setTidalVolume(float tidalVolume);
     void setRespiratoryRate(float respiratoryRate);
     void setMinuteVolume(float minuteVolume);
 
     float minuteVolumeInferiorLimit = 5;
-    float minuteVolumesuperiorLimit = 8;
+    float minuteVolumeSuperiorLimit = 8;
+
+    float respiratoryRateSuperiorLimit = 25;
+    float respiratoryRateInferiorLimit = 15;
+
     bool minuteVolumeAlarm = false;
+    bool respiratoryRateAlarm = false;
 
     QLabel* minuteVolumeMinMax;
+
+    Chart* pressureFlowChart;
+    Chart* expirationFlowChart;
+    Chart* volumeChart;
+    QDateTime previousLoopTime = QDateTime::currentDateTime();
+
 private slots:
     void newFlowMeasurement(float flow_LPM);
     void verifyAlarms();
     void configureAlarms();
+
 
   //  void handleError(QSerialPort::SerialPortError error);
 };

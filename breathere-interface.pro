@@ -12,7 +12,7 @@ HEADERS += \
     src/bluetooth/devicehandler.h \
     src/bluetooth/deviceinfo.h \
     src/bluetooth/heartrate-global.h \
-    src/chartwidget.h \
+    src/chart.h \
     src/configurealarmdialog.h \
     src/mainWindow.h
 
@@ -22,7 +22,7 @@ SOURCES += \
     src/bluetooth/devicefinder.cpp \
     src/bluetooth/devicehandler.cpp \
     src/bluetooth/deviceinfo.cpp \
-    src/chartwidget.cpp \
+    src/chart.cpp \
     src/configurealarmdialog.cpp \
     src/main.cpp \
     src/mainWindow.cpp

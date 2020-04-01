@@ -1,102 +1,27 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the Qt Charts module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 or (at your option) any later version
-** approved by the KDE Free Qt Foundation. The licenses are as published by
-** the Free Software Foundation and appearing in the file LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
-
 #include "mainWindow.h"
+#include "configurealarmdialog.h"
+#include "chart.h"
 
-#include <QMediaPlayer>
-
-
-#include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QChart>
-#include <QtCharts/QValueAxis>
 #include <QGraphicsLayout>
-
 #include <QtWidgets/QVBoxLayout>
 #include <QDebug>
 #include <QLabel>
-#include <QFontDatabase>
 #include <QTimer>
 #include <QTime>
 #include <QtMath>
 #include <QPushButton>
-#include "configurealarmdialog.h"
-
-
-#include "QBuffer"
-#include <QAudioOutput>
 #include <QtMath>
 #include <QLineEdit>
 #include <QInputDialog>
-#include <QSizePolicy>
+
+#include <QBuffer>
+#include <QAudioOutput>
+
 
 #define SAMPLE_RATE 44000
 #define FREQ_CONST ((2.0 * M_PI) / SAMPLE_RATE)
 
 QT_CHARTS_USE_NAMESPACE
-
-QChartView* MainWindow::createChart(QtCharts::QLineSeries* lineSeries, QString axisTitle, int rangeLow, int rangeHigh){
-
-    QChart* chart = new QChart();
-    QChartView *chartView = new QChartView(chart);
-
-    chart->addSeries(lineSeries);
-    QValueAxis *axisX = new QValueAxis;
-    axisX->setRange(0, sampleCount/sampleRate);
-    axisX->setLabelFormat("%g");
-    QValueAxis *axisY = new QValueAxis;
-    axisY->setLinePenColor(QColor(0,0,0));
-
-    axisY->setRange(rangeLow, rangeHigh);
-    axisY->setTitleText(axisTitle);
-    chart->addAxis(axisX, Qt::AlignBottom);
-    lineSeries->attachAxis(axisX);
-    chart->addAxis(axisY, Qt::AlignLeft);
-    axisX->setTickCount(16);
-    axisX->setGridLineVisible(false);
-
-    lineSeries->attachAxis(axisY);
-    chart->legend()->hide();
-    chart->setContentsMargins(0,-15,0,-15);
-
-    chart->layout()->setContentsMargins(0, 0, 0, 0);
-    chart->setBackgroundRoundness(0);
-
-    chart->setTheme(QChart::ChartThemeDark);
-    QBrush backgroundBrush(QColor(44,46,56));
-    chart->setBackgroundBrush(backgroundBrush);
-
-
-
-    return chartView;
-}
-
 
 void MainWindow::playSound(){
 
@@ -134,41 +59,45 @@ void MainWindow::playSound(){
 }
 
 void MainWindow::verifyAlarms(){
-    if (minuteVolumeAlarm == true){
+    if (minuteVolumeAlarm == true || respiratoryRateAlarm == true){
         playSound();
     }
+
 }
 
 
 MainWindow::MainWindow(QWidget *parent) :
-    QWidget(parent),
-    expirationFlowSeries(new QLineSeries),
-    pressureFlowSeries(new QLineSeries),
-    volumeFlowSeries(new QLineSeries)
+    QWidget(parent)
 {
+    // Start bluetooth connexion
     connectionHandler = new ConnectionHandler();
     deviceHandler = new DeviceHandler();
     deviceFinder = new DeviceFinder(deviceHandler);
 
-    QMediaPlayer* player = new QMediaPlayer;
-    player->setMedia(QUrl::fromLocalFile("/Users/William/dev/ventilatorInterface/sounds/beep.mp3"));
-    player->setVolume(50);
+    // Create plots
+    pressureFlowChart = new Chart("Pressure (cmH2O)", sampleCount, sampleRate, -50, 50);
+    expirationFlowChart = new Chart("Exp Flow (L/min)", sampleCount, sampleRate, 0, 100);
+    volumeChart = new Chart("Exp Volume (mL)", sampleCount, sampleRate, 0, 1000);
 
-    QChartView *pressureFlowChartView = createChart(pressureFlowSeries, "Pressure (cmH2O)", -50, 50);
-    QChartView *expirationFlowChartView = createChart(expirationFlowSeries, "Exp Flow (L/min)", 0, 100);
-    QChartView *volumeFlowChartView = createChart(volumeFlowSeries, "Exp Volume (mL)", 0 , 1000);
+    // Connect the bluetooth messages to the flow measurement calculation
     connect(deviceHandler, SIGNAL(newFlowMeasurement(float)), this, SLOT(newFlowMeasurement(float)));
 
+    // Create the graph layout
     QGridLayout *mainLayout = new QGridLayout(this);
-    
-    QGridLayout *parameterLayout = new QGridLayout();
+    mainLayout->setContentsMargins(30,0,0,0);
+    mainLayout->setVerticalSpacing(0);
+    mainLayout->setHorizontalSpacing(30);
 
+    // Create the parameter layout
+    QGridLayout *parameterLayout = new QGridLayout();
     mainLayout->addLayout(parameterLayout,0,0,3,1);
-    
+
+    // Create the fonts for the labels
     QFont numberFont( "Arial", 100, QFont::Thin);
     QFont labelFont( "Arial", 18, QFont::Thin);
     QFont alarmLimitsFont( "Arial", 12, QFont::Bold);
 
+    // Create the peak pressure display
     QLabel* peakPressureLabel = new QLabel("0");
     peakPressureLabel->setFont(numberFont);
     peakPressureLabel->setAlignment(Qt::AlignRight);
@@ -179,6 +108,7 @@ MainWindow::MainWindow(QWidget *parent) :
     peakPressureMinMax->setAlignment(Qt::AlignRight| Qt::AlignTop);
     peakPressureMinMax->setFont(labelFont);
 
+    // Create the respiratory rate label
     respiratoryRateLabel = new QLabel("0");
     respiratoryRateLabel->setFont(numberFont);
     respiratoryRateLabel->setAlignment(Qt::AlignRight);
@@ -186,10 +116,12 @@ MainWindow::MainWindow(QWidget *parent) :
     respiratoryRateLabelTitle->setFont(labelFont);
     respiratoryRateLabelTitle->setAlignment(Qt::AlignRight);
 
+    // Create the respiratory rate min max
     respiratoryRateMinMax = new QLabel("Min: 17 Max: 22");
     respiratoryRateMinMax->setAlignment(Qt::AlignRight| Qt::AlignTop);
     respiratoryRateMinMax->setFont(labelFont);
 
+    // Create the minute volume label
     minuteVolumeLabel = new QLabel("0.0");
     minuteVolumeLabel->setFont(numberFont);
     minuteVolumeLabel->setAlignment(Qt::AlignRight);
@@ -200,6 +132,7 @@ MainWindow::MainWindow(QWidget *parent) :
     minuteVolumeMinMax->setAlignment(Qt::AlignRight| Qt::AlignTop);
     minuteVolumeMinMax->setFont(labelFont);
 
+    // Create the tidal volume label
     tidalVolumeLabel = new QLabel("0");
     tidalVolumeLabel->setFont(numberFont);
     tidalVolumeLabel->setAlignment(Qt::AlignRight);
@@ -210,75 +143,79 @@ MainWindow::MainWindow(QWidget *parent) :
     tidalVolumeMinMax->setAlignment(Qt::AlignRight| Qt::AlignTop);
     tidalVolumeMinMax->setFont(labelFont);
 
-    mainLayout->setContentsMargins(30,0,0,0);
-    mainLayout->setVerticalSpacing(0);
-    mainLayout->setHorizontalSpacing(30);
-    mainLayout->addWidget(pressureFlowChartView,    0, 1);
-    mainLayout->addWidget(expirationFlowChartView,  1, 1);
-    mainLayout->addWidget(volumeFlowChartView,      2, 1);
+    // Create the tidal volume label
+    mainLayout->addWidget(pressureFlowChart->getChartView(),        0, 1);
+    mainLayout->addWidget(expirationFlowChart->getChartView(),  1, 1);
+    mainLayout->addWidget(volumeChart->getChartView(),      2, 1);
 
-    QFrame* line = new QFrame();
-
-    line->setStyleSheet("QFrame {color: rgb(100,100,100);}");
-    line->setFrameShape(QFrame::HLine);
-    parameterLayout->addWidget(peakPressureLabel,        0, 0);
-    parameterLayout->addWidget(peakPressureTitleLabel,   1, 0);
-    parameterLayout->addWidget(line,                     2, 0);
-
-    parameterLayout->addWidget(respiratoryRateLabel,        3, 0);
-    parameterLayout->addWidget(respiratoryRateLabelTitle,   4, 0);
-   // parameterLayout->addWidget(respiratoryRateMinMax,       5, 0);
-
-    parameterLayout->addWidget(minuteVolumeLabel,6,0);
-    parameterLayout->addWidget(minuteVolumeTitleLabel,7,0);
-   // parameterLayout->addWidget(minuteVolumeMinMax,8,0);
-
-    parameterLayout->addWidget(tidalVolumeLabel,9,0);
-    parameterLayout->addWidget(tidalVolumeTitleLabel,10,0);
-   // parameterLayout->addWidget(tidalVolumeMinMax,11,0);
-
+    // Create the alarm config button
     QPushButton* alarmConfigButton = new QPushButton("Configure Alarms");
 
+    // Place the parameters in the parameter layout
+    // Peak pressure
+    parameterLayout->addWidget(peakPressureLabel,        0, 0);
+    parameterLayout->addWidget(peakPressureTitleLabel,   1, 0);
+
+    // Respiratory rate
+    parameterLayout->addWidget(respiratoryRateLabel,        3, 0);
+    parameterLayout->addWidget(respiratoryRateLabelTitle,   4, 0);
+
+    // Minute volume
+    parameterLayout->addWidget(minuteVolumeLabel,6,0);
+    parameterLayout->addWidget(minuteVolumeTitleLabel,7,0);
+
+    // Tidal volume
+    parameterLayout->addWidget(tidalVolumeLabel,9,0);
+    parameterLayout->addWidget(tidalVolumeTitleLabel,10,0);
+
+    // Alarm config button
     parameterLayout->addWidget(alarmConfigButton, 12, 0);
     connect(alarmConfigButton, SIGNAL(clicked()), this, SLOT(configureAlarms()));
 
+    // UNCOMMENT TO START SIMULATED WAVEFORMS
     QTimer *timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(addPoint()));
     timer->start(30);
 
-
+    // Alarm timer
     QTimer *alarmTimer = new QTimer(this);
     connect(alarmTimer, SIGNAL(timeout()), this, SLOT(verifyAlarms()));
-
-
     alarmTimer->start(2000);
-
 }
+
 void MainWindow::configureAlarms(){
 
     configureAlarmDialog configAlarmDialog;
 
+    configAlarmDialog.setVolumeMinuteMax(minuteVolumeSuperiorLimit);
+    configAlarmDialog.setVolumeMinuteMin(minuteVolumeInferiorLimit);
+
+    configAlarmDialog.setRespiratoryRateMax(respiratoryRateSuperiorLimit);
+    configAlarmDialog.setRespiratoryRateMin(respiratoryRateInferiorLimit);
+
     if(configAlarmDialog.exec()){
 
-        minuteVolumesuperiorLimit = configAlarmDialog.getVolumeMinuteMax();
-
-        qDebug() << minuteVolumesuperiorLimit;
-
+        // Get minute volume
+        minuteVolumeSuperiorLimit = configAlarmDialog.getVolumeMinuteMax();
         minuteVolumeInferiorLimit = configAlarmDialog.getVolumeMinuteMin();
-        qDebug() << minuteVolumeInferiorLimit;
-
         QString minuteVolumeInferiorLimitText;
         minuteVolumeInferiorLimitText.setNum(minuteVolumeInferiorLimit, 'f', 1);
-
         QString minuteVolumesuperiorLimitText;
-        minuteVolumesuperiorLimitText.setNum(minuteVolumesuperiorLimit, 'f', 1);
+        minuteVolumesuperiorLimitText.setNum(minuteVolumeSuperiorLimit, 'f', 1);
+        minuteVolumeMinMax->setText(QString("Min: %1 Max: %2").arg(minuteVolumeInferiorLimit).arg(minuteVolumeSuperiorLimit));
 
-        minuteVolumeMinMax->setText(QString("Min: %1 Max: %2").arg(minuteVolumeInferiorLimit).arg(minuteVolumesuperiorLimit));
+        // RespiratoryRate
+        respiratoryRateSuperiorLimit = configAlarmDialog.getRespiratoryRateMax();
+        respiratoryRateInferiorLimit = configAlarmDialog.getRespiratoryRateMin();
+        QString respiratoryRateInferiorLimitText;
+        respiratoryRateInferiorLimitText.setNum(respiratoryRateInferiorLimit, 'f', 1);
+        QString respiratoryRateSuperiorLimitText;
+        respiratoryRateSuperiorLimitText.setNum(respiratoryRateSuperiorLimit, 'f', 1);
+        respiratoryRateMinMax->setText(QString("Min: %1 Max: %2").arg(respiratoryRateInferiorLimit).arg(respiratoryRateSuperiorLimit));
     }
 }
 
 
-QDateTime previousLoopTime = QDateTime::currentDateTime();
 
 void MainWindow::addPoint(){
 
@@ -297,7 +234,6 @@ void MainWindow::addPoint(){
     }
 
     newFlowMeasurement(wave);
-
 }
 
 
@@ -308,7 +244,6 @@ void MainWindow::setTidalVolume( float tidalVolume){
     text.setNum(tidalVolume, 'f',0);
 
     tidalVolumeLabel->setText(text);
-
 }
 
 void MainWindow::setRespiratoryRate(float respiratoryRate){
@@ -317,7 +252,19 @@ void MainWindow::setRespiratoryRate(float respiratoryRate){
 
     text.setNum(respiratoryRate, 'f', 0);
 
+
+    if( (respiratoryRate > respiratoryRateInferiorLimit)  and (respiratoryRate < respiratoryRateSuperiorLimit)){
+        respiratoryRateLabel->setStyleSheet("QWidget{color: rgb(220,220,220);}");
+        respiratoryRateAlarm = false;
+
+    } else {
+
+        respiratoryRateLabel->setStyleSheet("QWidget{color: rgb(255,0,0);}");
+        respiratoryRateAlarm = true;
+    }
+
     respiratoryRateLabel->setText(text);
+
 }
 
 void MainWindow::setMinuteVolume(float minuteVolume){
@@ -326,7 +273,7 @@ void MainWindow::setMinuteVolume(float minuteVolume){
 
     text.setNum(minuteVolume, 'f', 1);
 
-    if( (minuteVolume > minuteVolumeInferiorLimit)  and (minuteVolume < minuteVolumesuperiorLimit)){
+    if( (minuteVolume > minuteVolumeInferiorLimit)  and (minuteVolume < minuteVolumeSuperiorLimit)){
         minuteVolumeLabel->setStyleSheet("QWidget{color: rgb(220,220,220);}");
         minuteVolumeAlarm = false;
 
@@ -336,7 +283,6 @@ void MainWindow::setMinuteVolume(float minuteVolume){
         minuteVolumeAlarm = true;
     }
     minuteVolumeLabel->setText(text);
-
 }
 
 void MainWindow::newFlowMeasurement( float flow_LPM)
@@ -384,59 +330,6 @@ void MainWindow::newFlowMeasurement( float flow_LPM)
             volume = 0;
         }
 
-        addFlow(flow_LPM);
-        addVolume(volume);
-}
-
-
-qint64 MainWindow::addFlow(float flow_LPM)
-{
-
-    //qDebug("test2");
-
-    if (flowBuffer.isEmpty()) {
-        flowBuffer.reserve(sampleCount);
-        for (int i = 0; i < sampleCount; ++i)
-            flowBuffer.append(QPointF(i/sampleRate, 0));
-    }
-
-    int start = sampleCount-1;
-    for (int s = 0; s < start; ++s){
-        flowBuffer[s].setY(flowBuffer.at(s + 1).y());
-
-    }
-
-    for (int s = start; s < sampleCount; ++s){
-        flowBuffer[s].setY(flow_LPM);
-    }
-
-    expirationFlowSeries->replace(flowBuffer);
-
-    return (sampleCount);
-}
-
-
-qint64 MainWindow::addVolume(float volume_mL)
-{
-    if (volumeBuffer.isEmpty()) {
-        volumeBuffer.reserve(sampleCount);
-        for (int i = 0; i < sampleCount; ++i)
-            volumeBuffer.append(QPointF(i/sampleRate, 0));
-    }
-
-    int start = sampleCount-1;
-    for (int s = 0; s < start; ++s){
-        volumeBuffer[s].setY(volumeBuffer.at(s + 1).y());
-    }
-
-
-    for (int s = start; s < sampleCount; ++s){
-        volumeBuffer[s].setY(volume_mL);
-    }
-
-    volumeFlowSeries->replace(volumeBuffer);
-
-
-
-    return (sampleCount);
+        expirationFlowChart->addPoint(flow_LPM);
+        volumeChart->addPoint(volume);
 }

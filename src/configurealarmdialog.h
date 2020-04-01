@@ -13,7 +13,6 @@ class configureAlarmDialog : public QDialog
     Q_OBJECT
 public:
     configureAlarmDialog();
-    ~configureAlarmDialog();
 
     QLabel* volumeMinuteMaxLabel;
     QLabel* volumeMinuteMinLabel;
@@ -32,6 +31,14 @@ public:
 
     float getVolumeMinuteMax();
     float getVolumeMinuteMin();
+    void setVolumeMinuteMin(float volumeMinuteMax);
+    void setVolumeMinuteMax(float volumeMinuteMin);
+
+    float getRespiratoryRateMax();
+    float getRespiratoryRateMin();
+    void setRespiratoryRateMin(float respiratoryRateMax);
+    void setRespiratoryRateMax(float respiratoryRateMin);
+
 };
 
 #endif // CONFIGUREALARMDIALOG_H
